@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#121212" />
+  <title>Crônica de Sangue · Skyrim RP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#121212',
+            charcoal: '#181818',
+            iron: '#242424',
+            parchment: '#ece5d6',
+            gold: '#d4af37',
+            goldSoft: '#f1d77a',
+            blood: '#9f3a3a',
+            moss: '#6e8b5b'
+          },
+          fontFamily: {
+            display: ['Cinzel', 'Georgia', 'serif'],
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
+          },
+          boxShadow: {
+            panel: '0 18px 60px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.04)',
+            gold: '0 0 0 1px rgba(212,175,55,.25), 0 8px 30px rgba(212,175,55,.08)'
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <div class="flex items-center gap-4">
+        <div class="brand-mark"><span>ᛉ</span></div>
+        <div>
+          <div class="brand-word display">Crônica de Sangue</div>
+          <div class="brand-sub">Arena de apostas · Skyrim RP</div>
+        </div>
+      </div>
+      <div class="tabbar" id="viewTabs" role="tablist" aria-label="Visões da arena">
+        <button class="tab-btn active" data-action="switch-tab" data-tab="admin" role="tab">Painel de controle</button>
+        <button class="tab-btn" data-action="switch-tab" data-tab="public" role="tab">Visão pública</button>
+      </div>
+      <button class="status-chip" id="adminSessionButton" data-action="login"><span class="status-dot"></span><span id="headerStatus">Entrar como administrador</span></button>
+    </div>
+  </header>
+
+  <main class="shell page">
+    <section id="adminLock" class="admin-lock hidden" aria-live="polite">
+      <div class="lock-icon">◈</div>
+      <h1>Área administrativa bloqueada</h1>
+      <p>Esta tela não exibe a arena nem os controles do torneio. Faça login como administrador para continuar.</p>
+      <button class="btn btn-primary" data-action="login">Entrar como administrador</button>
+    </section>
+    <section id="adminView">
+      <div class="hero">
+        <div>
+          <div class="eyebrow">Migo &amp; Bolg · mesa do narrador</div>
+          <h1 class="display page-title">O destino da arena está em suas mãos.</h1>
+          <p class="lede">Registre apostas em segundos, conduza a chave mata-mata e encerre cada combate com um acerto de contas claro para o servidor.</p>
+        </div>
+        <div class="hero-actions">
+          <button class="btn btn-quiet" data-action="export-text">Exportar resumo</button>
+          <button class="btn btn-quiet" data-action="export-json">Exportar JSON</button>
+          <button class="btn" data-action="settle-tournament">Encerrar torneio</button>
+          <button class="btn btn-danger" data-action="new-event">Novo torneio</button>
+        </div>
+      </div>
+
+      <div class="grid-stats" id="adminStats"></div>
+
+      <div class="workspace">
+        <section class="panel">
+          <div class="panel-header">
+            <div><div class="panel-kicker">Entrada rápida</div><div class="panel-title">Registrar nova aposta</div></div>
+            <div class="caption">Salvo no navegador</div>
+          </div>
+          <div class="panel-body">
+            <form id="betForm">
+              <div class="field-grid">
+                <div class="field"><label for="bettorName">Nome do apostador</label><input class="input" id="bettorName" name="bettor" required placeholder="Ex.: Ulfric Stormcloak" autocomplete="off" /></div>
+                <div class="field"><label for="betType">Tipo de aposta</label><select class="select" id="betType" name="type"><option value="fight">Luta atual · rápida</option><option value="group">Grupo / lado da chave · média</option><option value="champion">Campeão geral / bolão · longa</option></select></div>
+              </div>
+              <div class="field-grid" style="margin-top:12px">
+                <div class="field"><label for="betChoice">Lutador / opção escolhida</label><select class="select" id="betChoice" name="choice"></select></div>
+                <div class="field"><label for="betAmount">Valor apostado</label><div class="suffix-input"><input class="input" id="betAmount" name="amount" type="number" min="1" step="0.01" required placeholder="20" /><span>PO</span></div></div>
+              </div>
+              <p class="form-note" id="betHint">A aposta rápida entra na luta em andamento e será fechada quando o vencedor for declarado.</p>
+              <div class="form-actions"><span class="caption" id="activeMatchHint"></span><button class="btn btn-primary" type="submit">Registrar aposta <span aria-hidden="true">↗</span></button></div>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header"><div><div class="panel-kicker">Regras editáveis</div><div class="panel-title">Distribuição do ouro</div></div><span class="text-gold" style="font-size:20px">◈</span></div>
+          <div class="panel-body">
+            <form id="settingsForm">
+              <div class="field-grid three">
+                <div class="field"><label for="fightWinner">Luta · vencedores</label><div class="suffix-input"><input class="input" id="fightWinner" type="number" min="0" max="100" step="1" /><span>%</span></div></div>
+                <div class="field"><label for="fightHouse">Luta · casa</label><div class="suffix-input"><input class="input" id="fightHouse" type="number" min="0" max="100" step="1" /><span>%</span></div></div>
+                <div class="field"><label for="fightFund">Luta · bolsa</label><div class="suffix-input"><input class="input" id="fightFund" type="number" min="0" max="100" step="1" /><span>%</span></div></div>
+                <div class="field"><label for="groupWinner">Grupo · vencedores</label><div class="suffix-input"><input class="input" id="groupWinner" type="number" min="0" max="100" step="1" /><span>%</span></div></div>
+                <div class="field"><label for="groupHouse">Grupo · casa</label><div class="suffix-input"><input class="input" id="groupHouse" type="number" min="0" max="100" step="1" /><span>%</span></div></div>
+                <div class="field"><label for="championWinner">Bolão · vencedores</label><div class="suffix-input"><input class="input" id="championWinner" type="number" min="0" max="100" step="1" /><span>%</span></div></div>
+                <div class="field"><label for="championHouse">Bolão · casa</label><div class="suffix-input"><input class="input" id="championHouse" type="number" min="0" max="100" step="1" /><span>%</span></div></div>
+                <div class="field"><label for="entryFee">Inscrição por lutador</label><div class="suffix-input"><input class="input" id="entryFee" type="number" min="0" step="1" /><span>PO</span></div></div>
+              </div>
+              <div class="form-actions"><span class="caption">Os valores são aplicados a partir do próximo encerramento.</span><button class="btn" type="submit">Salvar regras</button></div>
+            </form>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="panel-header"><div><div class="panel-kicker">Mesa do narrador</div><div class="panel-title">Controle da transmissão</div></div><button class="btn btn-quiet" data-action="open-substitution">Substituição Bolg</button></div>
+        <div class="panel-body"><div class="flow-controls" id="flowControls"></div></div>
+      </section>
+      <section class="panel section-space">
+        <div class="panel-header"><div><div class="panel-kicker">Confrontos ativos</div><div class="panel-title">Chave completa · somente administrador</div></div><span class="caption">A visão pública mostra apenas a luta sorteada</span></div>
+        <div class="panel-body"><div class="bracket-wrap"><div class="bracket-board" id="adminBracket"></div></div></div>
+      </section>
+
+      <div class="below-grid section-space">
+        <section class="panel">
+        <div class="panel-header"><div><div class="panel-kicker">Escalação</div><div class="panel-title">Participantes na arena</div></div><div class="stack-8" style="justify-items:end"><label class="caption" for="bracketSize">Tamanho da chave</label><select class="select" id="bracketSize" style="min-height:32px;width:auto"><option value="8">8 lutadores</option><option value="16">16 lutadores</option><option value="32">32 lutadores</option></select><span class="caption">Taxa: <strong class="text-gold" id="entryFeeBadge">20 PO</strong></span></div></div>
+          <div class="panel-body">
+            <div class="roster" id="rosterFields"></div>
+            <div class="form-actions"><span class="caption">Edite os nomes antes da primeira luta.</span><button class="btn" data-action="save-roster">Salvar escalação</button></div>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panel-header"><div><div class="panel-kicker">Caixa de Migo &amp; Bolg</div><div class="panel-title">Últimos prêmios pagos</div></div></div>
+          <div class="panel-body"><div class="payout-list" id="adminPayouts"></div></div>
+        </section>
+      </div>
+
+      <section class="panel section-space">
+        <div class="panel-header"><div><div class="panel-kicker">Livro-caixa</div><div class="panel-title">Apostas registradas</div></div><span class="caption" id="betCountCaption"></span></div>
+        <div class="panel-body"><div class="ledger" id="adminLedger"></div></div>
+      </section>
+    </section>
+
+    <section id="publicView" class="hidden">
+      <div class="public-hero">
+        <div class="public-hero-grid">
+          <div>
+            <div class="live-stamp">Transmissão da arena em tempo real</div>
+            <h1 class="display public-title">O próximo nome a cair será escrito agora.</h1>
+            <p class="lede">Odds, chaveamento e pagamentos publicados para todos os espectadores. Nenhum ouro fica sem registro.</p>
+          </div>
+          <div class="current-duel" id="publicDuel"></div>
+        </div>
+      </div>
+      <div class="grid-stats" id="publicStats"></div>
+      <div class="public-grid">
+        <section class="panel">
+          <div class="panel-header"><div><div class="panel-kicker">Transparência pública</div><div class="panel-title">Chave atualizada</div></div><span class="caption">Resultado confirmado pelo narrador</span></div>
+          <div class="panel-body"><div class="bracket-wrap"><div class="bracket-board" id="publicBracket"></div></div></div>
+        </section>
+        <aside class="public-side">
+          <section class="panel"><div class="panel-header"><div><div class="panel-kicker">Bolão longo</div><div class="panel-title">Pote acumulado</div></div></div><div class="panel-body"><div class="pool"><div><div class="pool-label">Campeão geral</div><div class="pool-value" id="publicPool">0 PO</div></div><span class="text-gold" style="font-size:27px">◈</span></div><p class="caption" style="margin:11px 0 0">O pote será distribuído entre os apostadores do campeão após o encerramento do torneio.</p></div></section>
+          <section class="panel"><div class="panel-header"><div><div class="panel-kicker">Histórico público</div><div class="panel-title">Últimos prêmios pagos</div></div></div><div class="panel-body"><div class="payout-list" id="publicPayouts"></div></div></section>
+          <section class="panel"><div class="panel-header"><div><div class="panel-kicker">Nota da casa</div><div class="panel-title">Regras vigentes</div></div></div><div class="panel-body"><div class="rule-list" id="publicRules"></div></div></section>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell footer">Crônica de Sangue · ferramenta para transmissão de Skyrim RP · dados oficiais sincronizados pelo servidor.</footer>
+  <div id="modalRoot"></div>
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STORAGE_KEY = 'skyrim-rp-arena-state-v1';
+      const defaultSettings = { fightWinner: 70, fightHouse: 20, fightFund: 10, groupWinner: 85, groupHouse: 15, championWinner: 80, championHouse: 20, entryFee: 20 };
+      const defaultFighters = [
+        { id: 'f1', name: 'Aela, a Caçadora', isBolg: false },
+        { id: 'f2', name: 'Ragnar Punho de Ferro', isBolg: false },
+        { id: 'f3', name: 'Sigrun da Neve', isBolg: false },
+        { id: 'f4', name: 'Hrothgar, o Incansável', isBolg: false },
+        { id: 'f5', name: 'Vilkas de Jorrvaskr', isBolg: false },
+        { id: 'f6', name: 'Kora Lâmina Rubra', isBolg: false },
+        { id: 'f7', name: 'Bjorna Martelo-Seco', isBolg: false },
+        { id: 'f8', name: 'Malacath Filho do Ferro', isBolg: false }
+      ];
+
+      const clone = (obj) => JSON.parse(JSON.stringify(obj));
+      const uid = (prefix) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+      const nowLabel = (value = Date.now()) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+      const money = (value) => `${Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: Number(value || 0) % 1 ? 2 : 0 })} PO`;
+      const num = (value) => Number(value || 0);
+      const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+
+      function initialMatches(size = 8) {
+        const totalRounds = Math.log2(size);
+        const names = ['Rodada preliminar', '32 avos de final', '16 avos de final', 'Oitavas de final', 'Quartas de final', 'Semifinal', 'Grande final'];
+        const matches = [];
+        for (let roundIndex = 0; roundIndex < totalRounds; roundIndex++) {
+          const count = size / Math.pow(2, roundIndex + 1);
+          const round = names[Math.max(0, names.length - totalRounds + roundIndex)] || `Rodada ${roundIndex + 1}`;
+          for (let i = 0; i < count; i++) matches.push({ id: `r${roundIndex}m${i}`, roundIndex, round, label: roundIndex === totalRounds - 1 ? 'Final' : `${roundIndex === totalRounds - 2 ? 'SF' : 'Luta'} ${i + 1}`, a: roundIndex === 0 ? `f${i * 2 + 1}` : null, b: roundIndex === 0 ? `f${i * 2 + 2}` : null, winner: null, status: roundIndex === 0 ? 'open' : 'waiting', settlement: null });
+        }
+        return matches;
+      }
+
+      function createFighters(size = 8) {
+        const base = clone(defaultFighters);
+        const extras = ['Eydis da Lua','Gunnar Quebra-Escudos','Freyja Cinza-Fria','Tormund Corvo Negro','Yrsa Olho de Gelo','Keld Martelo-Seco','Astrid Lâmina Pálida','Rurik Filho do Urso','Svala do Salto Alto','Hakon Marca-Ferro','Dagna Punho Rubro','Leif Lobo Cinzento','Ingrid da Montanha','Sten Quebra-Crânios','Runa Coração-de-Pedra','Ottar do Norte','Kari Lança-Longa','Einar Sangue-Frio','Thora Vento-Sul','Baldur Mão-de-Ferro','Liv da Geada','Njal Sem-Medo','Gerdur Espada-Negra','Sigurd da Cicatriz'];
+        while (base.length < size) { const i = base.length; base.push({ id: `f${i + 1}`, name: extras[i - 8] || `Lutador ${i + 1}`, isBolg: false }); }
+        return base.slice(0, size);
+      }
+
+      function createState(settings = defaultSettings, fighters = defaultFighters, bracketSize = fighters.length) {
+        const size = [8, 16, 32].includes(Number(bracketSize)) ? Number(bracketSize) : 8;
+        const roster = createFighters(size).map((item, index) => ({ ...item, ...(fighters[index] || {}) , id: `f${index + 1}` }));
+        return { version: 2, settings: clone(settings), bracketSize: size, fighters: roster, matches: initialMatches(size), bets: [], payouts: [], settlements: [], activity: [], eventStatus: 'open', flow: { shuffled: false, currentMatchId: null, nextMatchId: null, lastEvent: 'idle', eventNonce: 0, lastWinnerId: null, lastMatchSequence: 0 }, tab: 'public', bolg: null };
+      }
+
+      function loadState() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (!saved) return createState();
+          const size = [8, 16, 32].includes(Number(saved.bracketSize)) ? Number(saved.bracketSize) : (saved.fighters?.length >= 16 ? 16 : 8);
+          const state = { ...createState(defaultSettings, defaultFighters, size), ...saved };
+          state.settings = { ...defaultSettings, ...(saved.settings || {}) };
+          state.bracketSize = size;
+          state.fighters = Array.isArray(saved.fighters) && saved.fighters.length === size ? saved.fighters : createFighters(size);
+          state.matches = Array.isArray(saved.matches) && saved.matches.length === size * 2 - 1 ? saved.matches : initialMatches(size);
+          state.bets = Array.isArray(saved.bets) ? saved.bets : []; state.payouts = Array.isArray(saved.payouts) ? saved.payouts : []; state.settlements = Array.isArray(saved.settlements) ? saved.settlements : []; state.activity = Array.isArray(saved.activity) ? saved.activity : []; state.eventStatus = saved.eventStatus === 'settled' ? 'settled' : 'open'; state.flow = { ...createState(defaultSettings, defaultFighters, size).flow, ...(saved.flow || {}) };
+          return state;
+        } catch { return createState(); }
+      }
+
+      let state = loadState();
+      const isAdminRoute = window.location.pathname === '/admin' || window.location.pathname === '/admin/';
+      let currentTab = isAdminRoute ? 'admin' : 'public';
+      let remoteRevision = 0;
+      let setupPromptShown = false;
+      let lastSeenEventNonce = 0;
+      let remoteAuth = { authenticated: false, username: null, needsSetup: false };
+
+      const $ = (selector) => document.querySelector(selector);
+      const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+      function requireAdminClient() {
+        if (remoteAuth.authenticated && isAdminRoute) return true;
+        showToast('Faça login como administrador para realizar essa ação.', 'error');
+        syncRemoteState();
+        return false;
+      }
+
+      async function saveState(options = { admin: true }) {
+        if (options.admin !== false && !requireAdminClient()) return false;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        if (options.admin === false) return true;
+        try {
+          const response = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ state, revision: remoteRevision }) });
+          if (response.status === 401) { remoteAuth.authenticated = false; showToast('Sessão expirada. Entre novamente para continuar.', 'error'); await syncRemoteState(); }
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) { if (response.status === 409) { await syncRemoteState(); } throw new Error(result.error || 'Falha ao salvar no servidor.'); }
+          remoteRevision = Number(result.revision ?? remoteRevision);
+          return true;
+        } catch (error) { showToast(error.message || 'Servidor indisponível; a alteração não foi confirmada.', 'error'); }
+        return false;
+      }
+
+      async function syncRemoteState() {
+        try {
+          const response = await fetch('/api/state', { credentials: 'same-origin' });
+          const payload = await response.json();
+          remoteAuth = payload.auth || remoteAuth;
+          remoteRevision = Number(payload.revision ?? remoteRevision);
+          if (payload.state) { state = payload.state; state.flow = { ...createState(defaultSettings, state.fighters || defaultFighters, state.bracketSize || 8).flow, ...(state.flow || {}) }; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+          renderAll();
+          if (remoteAuth.needsSetup && isAdminRoute) {
+            if (!setupPromptShown && !$('#modalRoot').firstElementChild) { setupPromptShown = true; openAuthModal(true); }
+          } else setupPromptShown = false;
+        } catch { showToast('Modo local: não foi possível conectar ao servidor.', 'error'); }
+      }
+
+      function fighter(id) { return state.fighters.find((item) => item.id === id) || null; }
+      function fighterName(id) { return fighter(id)?.name || 'Aguardando vencedor'; }
+      function getMatch(id) { return state.matches.find((item) => item.id === id) || null; }
+      function matchSequence(match) { return match ? state.matches.filter((item) => item.roundIndex === match.roundIndex).indexOf(match) + 1 : 1; }
+      function activeMatch() { const selected = state.flow?.currentMatchId ? getMatch(state.flow.currentMatchId) : null; return selected?.status === 'open' && selected.a && selected.b ? selected : null; }
+      function nextReadyMatch() { return state.matches.filter((item) => item.status === 'open' && item.a && item.b).sort((a, b) => a.roundIndex - b.roundIndex || a.id.localeCompare(b.id))[0] || null; }
+      function matchBets(matchId) { return state.bets.filter((bet) => bet.type === 'fight' && bet.matchId === matchId); }
+      function totalBets() { return state.bets.reduce((sum, bet) => sum + num(bet.amount), 0); }
+      function totalHouse() { return state.settlements.reduce((sum, item) => sum + num(item.house), 0); }
+      function totalDistributed() { return state.payouts.reduce((sum, item) => sum + num(item.amount), 0); }
+      function championBets() { return state.bets.filter((bet) => bet.type === 'champion'); }
+      function groupBets() { return state.bets.filter((bet) => bet.type === 'group'); }
+      function groupForFighter(fighterId) {
+        const firstRound = state.matches.filter((match) => match.roundIndex === 0);
+        const match = firstRound.find((item) => item.a === fighterId || item.b === fighterId);
+        return match ? `group:${match.id}` : null;
+      }
+      function settledMatchCount() { return state.matches.filter((match) => match.status === 'closed').length; }
+
+      function pushActivity(text, tone = 'normal') {
+        state.activity.unshift({ id: uid('activity'), text, tone, at: Date.now() });
+        state.activity = state.activity.slice(0, 20);
+      }
+
+      function showToast(message, type = 'normal') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        $('#toastStack').appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
+      }
+
+      function playArenaSound(eventName, roundIndex = 0) {
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          const ctx = new AudioContext(); const now = ctx.currentTime;
+          const palettes = [[392, 523.25, 659.25], [261.63, 392, 523.25], [293.66, 440, 587.33], [349.23, 523.25, 698.46], [261.63, 329.63, 523.25, 783.99]];
+          const base = palettes[Math.min(Number(roundIndex) || 0, palettes.length - 1)];
+          const notes = eventName === 'victory' ? base.map((note) => note * 1.5) : base;
+          notes.forEach((frequency, index) => { const oscillator = ctx.createOscillator(); const gain = ctx.createGain(); oscillator.type = 'triangle'; oscillator.frequency.value = frequency; gain.gain.setValueAtTime(.0001, now + index * .11); gain.gain.exponentialRampToValueAtTime(.08, now + index * .11 + .02); gain.gain.exponentialRampToValueAtTime(.0001, now + index * .11 + .28); oscillator.connect(gain); gain.connect(ctx.destination); oscillator.start(now + index * .11); oscillator.stop(now + index * .11 + .3); });
+        } catch { /* áudio é opcional e não pode interromper a transmissão */ }
+      }
+
+      function setTab(tab) {
+        if (tab === 'admin' && !isAdminRoute) { window.location.href = '/admin'; return; }
+        if (isAdminRoute && !remoteAuth.authenticated) {
+          currentTab = 'admin';
+          $('#adminView').classList.add('hidden');
+          $('#publicView').classList.add('hidden');
+          $('#adminLock').classList.remove('hidden');
+          $$('.tab-btn').forEach((button) => button.classList.remove('active'));
+          return;
+        }
+        if (tab === 'admin' && !remoteAuth.authenticated) { window.location.href = '/admin'; return; }
+        currentTab = tab;
+        $('#adminLock').classList.add('hidden');
+        $('#adminView').classList.toggle('hidden', tab !== 'admin' || !remoteAuth.authenticated); $('#publicView').classList.toggle('hidden', tab !== 'public');
+        $$('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
+      }
+
+      function syncBracket() {
+        const totalRounds = Math.log2(Number(state.bracketSize || state.fighters.length));
+        for (let roundIndex = 1; roundIndex < totalRounds; roundIndex++) {
+          const previous = state.matches.filter((m) => m.roundIndex === roundIndex - 1);
+          const current = state.matches.filter((m) => m.roundIndex === roundIndex);
+          current.forEach((match, index) => {
+            const left = previous[index * 2], right = previous[index * 2 + 1];
+            match.a = left?.winner || null; match.b = right?.winner || null;
+            if (match.status !== 'closed') match.status = match.a && match.b ? 'open' : 'waiting';
+          });
+        }
+      }
+
+      function matchStatus(match) {
+        if (match.status === 'closed') return '<span class="match-status done">Encerrada</span>';
+        if (match.status === 'open') return '<span class="match-status live">Aberta</span>';
+        return '<span class="match-status">Aguardando</span>';
+      }
+
+      function matchCard(match, controls = false) {
+        const aName = match.a ? fighterName(match.a) : 'Vencedor anterior';
+        const bName = match.b ? fighterName(match.b) : 'Vencedor anterior';
+        const ready = match.status === 'open' && match.a && match.b;
+        const selected = activeMatch()?.id === match.id;
+        const winner = match.winner;
+        const row = (id, name) => `<div class="fighter-row ${winner === id ? 'winner' : ''} ${id ? '' : 'empty'}"><div class="fighter-name"><span class="fighter-sigil">${winner === id ? '✦' : '◆'}</span><strong>${esc(name)}</strong></div>${winner === id ? '<span class="winner-mark">Venceu</span>' : ''}</div>`;
+        return `<article class="match ${ready ? 'active' : ''}">
+          <div class="match-head"><span class="match-label">${esc(match.label)}</span>${matchStatus(match)}</div>
+          ${row(match.a, aName)}${row(match.b, bName)}
+          ${controls && selected ? `<div class="match-foot"><button class="mini-btn" data-action="open-settle" data-match-id="${match.id}">Declarar vencedor</button></div>` : ''}
+          ${controls && match.status === 'closed' && match.settlement ? `<div class="match-foot"><button class="mini-btn subtle" data-action="show-settlement" data-match-id="${match.id}">Ver acerto · ${money(match.settlement.distributed)}</button></div>` : ''}
+        </article>`;
+      }
+
+      function eventEffects(event) {
+        if (!['victory', 'round'].includes(event)) return '';
+        const particles = Array.from({ length: 18 }, (_, index) => `<i style="--r:${index * 20 + 8}deg;--y:-${72 + (index % 5) * 22}px;--d:${(index % 6) * .045}s"></i>`).join('');
+        return `<div class="event-banner ${event === 'victory' ? 'victory-banner' : 'round-banner'}">${event === 'victory' ? 'VITÓRIA CONFIRMADA' : 'NOVA ETAPA'}</div><div class="event-particles">${particles}</div>`;
+      }
+
+      function roundTheme(roundIndex = 0) {
+        const themes = [
+          { mark: 'ᚠ', name: 'Prova de Ferro' },
+          { mark: 'ᛁ', name: 'Círculo da Geada' },
+          { mark: 'ᛉ', name: 'Círculo das Runas' },
+          { mark: 'ᛏ', name: 'Círculo da Tempestade' },
+          { mark: '♛', name: 'Coroa dos Campeões' }
+        ];
+        return themes[Math.min(Number(roundIndex) || 0, themes.length - 1)];
+      }
+
+      function themeBadge(roundIndex) {
+        const theme = roundTheme(roundIndex);
+        return `<span class="theme-mark" aria-hidden="true">${theme.mark}</span><div class="theme-name">${theme.name}</div>`;
+      }
+
+      function renderBracket(target, controls = false) {
+        if (!controls) {
+          const active = activeMatch();
+          const event = state.flow?.lastEvent || 'idle';
+          const animationKey = `${active?.id || 'none'}:${state.flow?.eventNonce || 0}:${event}:${state.flow?.lastWinnerId || ''}`;
+          if (target.dataset.animationKey === animationKey) return;
+          target.dataset.animationKey = animationKey;
+          const visualClass = event === 'victory' ? ' victory' : event === 'round' ? ' round-change' : '';
+          if (!active) {
+            const next = state.flow?.nextMatchId ? getMatch(state.flow.nextMatchId) : null;
+            const lastWinner = state.flow?.lastWinnerId ? fighterName(state.flow.lastWinnerId) : '';
+            const themeIndex = next?.roundIndex ?? state.flow?.lastRoundIndex ?? 0;
+            target.style.gridTemplateColumns = '1fr';
+            const victoryCycle = Number(state.flow?.lastMatchSequence || 0) % 4;
+            target.innerHTML = `<div class="public-focus"><div class="public-focus-head"><div class="eyebrow">Transmissão da arena</div><div class="public-focus-title">${lastWinner ? 'Vitória confirmada' : next ? 'Próxima luta preparada' : 'Aguardando o narrador'}</div><div class="public-focus-sub">${lastWinner ? `${esc(lastWinner)} avança na chave.` : next ? 'O narrador sorteará o próximo confronto em instantes.' : 'A arena será revelada quando o sorteio começar.'}</div></div><div class="public-focus-card theme-${themeIndex} fight-cycle-${victoryCycle}${lastWinner && event === 'victory' ? ' victory' : ''}">${themeBadge(themeIndex)}${eventEffects(event)}<div class="focus-empty">${lastWinner ? `✦ ${esc(lastWinner)} venceu o combate anterior.` : 'Nenhuma luta está sendo exibida no momento.'}</div></div></div>`;
+            if (state.flow?.eventNonce > lastSeenEventNonce && currentTab === 'public') { lastSeenEventNonce = state.flow.eventNonce; playArenaSound(event, themeIndex); }
+            return;
+          }
+          const sequence = matchSequence(active);
+          const title = active.roundIndex === 0 ? `Primeira luta · ${sequence}` : `${active.round} · ${sequence}`;
+          const cycle = sequence % 4;
+          target.style.gridTemplateColumns = '1fr';
+          target.innerHTML = `<div class="public-focus"><div class="public-focus-head"><div class="eyebrow">Confronto selecionado · ${esc(active.round)}</div><div class="public-focus-title">${esc(title)}</div><div class="public-focus-sub">A luta em destaque é a única disputa aberta ao público agora.</div></div><article class="public-focus-card theme-${active.roundIndex} fight-cycle-${cycle} match-selected${visualClass}">${themeBadge(active.roundIndex)}${eventEffects(event)}<div class="focus-versus"><div class="focus-fighter ${active.winner === active.a ? 'winner' : ''}"><div class="focus-fighter-name">${esc(fighterName(active.a))}</div><div class="focus-fighter-status">${active.winner === active.a ? 'Vencedor' : 'Desafiante'}</div></div><div class="focus-x">VS</div><div class="focus-fighter ${active.winner === active.b ? 'winner' : ''}"><div class="focus-fighter-name">${esc(fighterName(active.b))}</div><div class="focus-fighter-status">${active.winner === active.b ? 'Vencedor' : 'Desafiante'}</div></div></div></article></div>`;
+          if (state.flow?.eventNonce > lastSeenEventNonce && currentTab === 'public') { lastSeenEventNonce = state.flow.eventNonce; playArenaSound(event, active.roundIndex); }
+          return;
+        }
+        const rounds = [...new Map(state.matches.map((m) => [m.roundIndex, m.round])).entries()].sort((a,b) => a[0]-b[0]);
+        target.innerHTML = rounds.map(([index, round]) => { const matches = state.matches.filter((match) => match.roundIndex === index); return `<div class="round-column"><div class="round-heading"><span>${esc(round)}</span><span class="round-count">${matches.length} combates</span></div><div class="round-stack">${matches.map((match) => matchCard(match, controls)).join('')}</div></div>`; }).join('');
+        target.style.gridTemplateColumns = `repeat(${rounds.length}, minmax(230px,1fr))`;
+      }
+
+      function getCurrentOdds(matchId) {
+        const bets = matchBets(matchId);
+        const match = getMatch(matchId);
+        const total = bets.reduce((sum, bet) => sum + num(bet.amount), 0);
+        const pool = total * num(state.settings.fightWinner) / 100;
+        const byChoice = {};
+        bets.forEach((bet) => {
+          const multiplier = state.bolg && bet.choiceId === state.bolg.fighterId ? num(state.bolg.multiplier) : 1;
+          byChoice[bet.choiceId] = (byChoice[bet.choiceId] || 0) + num(bet.amount) * multiplier;
+        });
+        const options = match ? [match.a, match.b].filter(Boolean) : [];
+        return options.map((choiceId) => ({ id: choiceId, name: fighterName(choiceId), amount: byChoice[choiceId] || 0, odds: byChoice[choiceId] ? pool / byChoice[choiceId] : 0 })).concat(options.length ? [] : []);
+      }
+
+      function statCard(label, value, note) { return `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${value}</div><div class="stat-note">${note}</div></div>`; }
+
+      function renderStats() {
+        const active = activeMatch();
+        const activeTotal = active ? matchBets(active.id).reduce((sum, bet) => sum + num(bet.amount), 0) : 0;
+        $('#adminStats').innerHTML = [
+          statCard('Ouro na mesa', money(totalBets()), `${state.bets.length} aposta${state.bets.length === 1 ? '' : 's'} registrada${state.bets.length === 1 ? '' : 's'}`),
+          statCard('Lucro da casa', money(totalHouse()), `${state.settlements.length} fechamento${state.settlements.length === 1 ? '' : 's'} processado${state.settlements.length === 1 ? '' : 's'}`),
+          statCard('Paga aos vencedores', money(totalDistributed()), `${state.payouts.length} pagamento${state.payouts.length === 1 ? '' : 's'} no histórico`),
+          statCard('Pote da luta atual', money(activeTotal), active ? `${active.label} · ${fighterName(active.a)} × ${fighterName(active.b)}` : 'Nenhuma luta aberta')
+        ].join('');
+
+        $('#publicStats').innerHTML = [
+          statCard('Pote total', money(totalBets()), 'Todas as modalidades de aposta'),
+          statCard('Lutas encerradas', `${settledMatchCount()}/${state.matches.length}`, `${state.bracketSize} lutadores · chave dinâmica`),
+          statCard('Casa registrada', money(totalHouse()), 'Lucro de Migo & Bolg'),
+          statCard('Ouro distribuído', money(totalDistributed()), 'Pagamentos confirmados')
+        ].join('');
+      }
+
+      function renderSettings() {
+        const s = state.settings;
+        ['fightWinner','fightHouse','fightFund','groupWinner','groupHouse','championWinner','championHouse','entryFee'].forEach((key) => { const el = $(`#${key}`); if (el) el.value = s[key]; });
+        $('#entryFeeBadge').textContent = money(s.entryFee);
+      }
+
+      function renderFlowControls() {
+        const flow = state.flow || {};
+        const ready = Boolean(flow.shuffled);
+        const active = activeMatch();
+        const next = flow.nextMatchId ? getMatch(flow.nextMatchId) : nextReadyMatch();
+        $('#flowControls').innerHTML = `<div class="flow-step ${ready ? 'done' : 'ready'}"><span class="panel-kicker">Passo 1</span><strong>Embaralhar lutadores</strong><small>${ready ? 'Sorteio já realizado para esta chave.' : 'Mistura as vagas da primeira rodada antes da transmissão.'}</small><button class="btn ${ready ? '' : 'btn-primary'}" data-action="shuffle-fighters" ${ready || state.bets.length || settledMatchCount() ? 'disabled' : ''}>${ready ? 'Embaralhado' : 'Embaralhar agora'}</button></div><div class="flow-step ${active ? 'ready' : ready ? 'ready' : ''}"><span class="panel-kicker">Passo 2</span><strong>Sortear luta</strong><small>${active ? `${active.label} está no ar.` : next ? `${next.label} está preparada.` : 'Embaralhe a chave para liberar o sorteio.'}</small><button class="btn ${ready && !active ? 'btn-primary' : ''}" data-action="select-next-match" ${!ready || active || !next ? 'disabled' : ''}>${active ? 'Luta no ar' : 'Sortear próxima luta'}</button></div><div class="flow-step ${flow.lastEvent === 'victory' ? 'done' : ''}"><span class="panel-kicker">Passo 3</span><strong>Declarar vencedor</strong><small>${active ? 'Abra a luta no quadro e confirme o vencedor.' : flow.lastWinnerId ? `Último vencedor: ${fighterName(flow.lastWinnerId)}.` : 'A declaração aparece quando houver uma luta no ar.'}</small>${active ? `<button class="btn btn-primary" data-action="open-settle" data-match-id="${active.id}">Marcar vencedor</button>` : '<button class="btn" disabled>Aguardando luta</button>'}</div>`;
+      }
+
+      function renderBetOptions() {
+        const type = $('#betType')?.value || 'fight';
+        const select = $('#betChoice');
+        if (!select) return;
+        const active = activeMatch();
+        let options = [];
+        if (type === 'fight') {
+          options = active ? [active.a, active.b].filter(Boolean).map((id) => ({ value: id, label: fighterName(id) })) : [];
+          if (!options.length) options = [{ value: '', label: 'Nenhuma luta disponível', disabled: true }];
+          $('#betHint').textContent = active ? `Aposta rápida vinculada a ${active.label}. Odd estimada = pote de vencedores ÷ ouro no lutador.` : 'Declare os vencedores anteriores para liberar o próximo combate.';
+          $('#activeMatchHint').textContent = active ? `${active.label}: ${fighterName(active.a)} × ${fighterName(active.b)}` : 'A chave está aguardando andamento.';
+        } else if (type === 'group') {
+          const firstRound = state.matches.filter((match) => match.roundIndex === 0);
+          options = firstRound.map((match) => ({ value: `group:${match.id}`, label: `Lado da chave · ${fighterName(match.a)} / ${fighterName(match.b)}` }));
+          $('#betHint').textContent = 'O fechamento desta modalidade pode ser acompanhado no livro-caixa; a configuração vigente reserva 85% aos vencedores.';
+          $('#activeMatchHint').textContent = 'Grupo / lado da chave';
+        } else {
+          options = state.fighters.map((item) => ({ value: item.id, label: item.name }));
+          $('#betHint').textContent = 'O bolão permanece acumulado até a confirmação do campeão geral.';
+          $('#activeMatchHint').textContent = `${championBets().length} palpite${championBets().length === 1 ? '' : 's'} no bolão`;
+        }
+        select.innerHTML = options.map((option) => `<option value="${esc(option.value)}" ${option.disabled ? 'disabled' : ''}>${esc(option.label)}</option>`).join('');
+      }
+
+      function renderRoster() {
+        $('#bracketSize').value = String(state.bracketSize || state.fighters.length);
+        $('#rosterFields').innerHTML = state.fighters.map((item, index) => `<div class="roster-row"><span class="roster-index">${String(index + 1).padStart(2, '0')}</span><input class="input" data-fighter-name="${item.id}" value="${esc(item.name)}" aria-label="Nome do lutador ${index + 1}" /></div>`).join('');
+      }
+
+      function renderPayouts(target) {
+        const items = state.payouts.slice(0, 8);
+        target.innerHTML = items.length ? items.map((item) => `<div class="payout-item"><div><div class="payout-who">${esc(item.bettor)}</div><div class="payout-meta">${esc(item.matchLabel || 'Campeão geral')} · ${esc(item.choiceLabel)} · ${nowLabel(item.at)}</div></div><div class="payout-amount">+${money(item.amount)}</div></div>`).join('') : '<div class="empty">Nenhum prêmio pago ainda.<br>Quando uma luta for encerrada, o resultado aparecerá aqui.</div>';
+      }
+
+      function renderLedger() {
+        const bets = state.bets.slice().reverse();
+        $('#betCountCaption').textContent = `${state.bets.length} entrada${state.bets.length === 1 ? '' : 's'}`;
+        $('#adminLedger').innerHTML = bets.length ? bets.map((bet) => `<div class="activity-item"><div><div class="payout-who">${esc(bet.bettor)} <span class="muted">apostou em</span> ${esc(bet.choiceLabel)}</div><div class="payout-meta">${bet.type === 'fight' ? `Luta rápida · ${esc(getMatch(bet.matchId)?.label || 'encerrada')}` : bet.type === 'group' ? 'Grupo / lado da chave' : 'Campeão geral / bolão'} · ${nowLabel(bet.at)}</div></div><div class="payout-amount">${money(bet.amount)}</div></div>`).join('') : '<div class="empty">O livro-caixa está limpo. Registre a primeira aposta acima.</div>';
+      }
+
+      function renderPublicDuel() {
+        const target = $('#publicDuel');
+        const active = activeMatch();
+        if (!active) {
+          const final = state.matches.slice().sort((a, b) => b.roundIndex - a.roundIndex)[0];
+          target.innerHTML = `<div class="eyebrow">Status da arena</div><div class="duel-names">${final?.winner ? `Campeão: ${esc(fighterName(final.winner))}` : 'Aguardando próximo combate'}</div><div class="caption">${final?.winner ? 'O torneio está pronto para o acerto final do bolão.' : 'O narrador ainda precisa confirmar os próximos nomes.'}</div>`;
+          return;
+        }
+        const odds = getCurrentOdds(active.id);
+        target.innerHTML = `<div class="eyebrow">${esc(active.label)} · luta atual</div><div class="duel-names">${esc(fighterName(active.a))}<span>×</span>${esc(fighterName(active.b))}</div><div class="odds-grid">${odds.map((item) => `<div class="odd-card"><div class="odd-name">${esc(item.name)}</div><div class="odd-value">${item.odds ? `${item.odds.toFixed(2)}×` : '—'}</div><div class="odd-caption">odd estimada · ${money(item.amount)} apostados</div></div>`).join('')}</div>`;
+      }
+
+      function renderPublicRules() {
+        const s = state.settings;
+        $('#publicRules').innerHTML = [
+          ['Luta rápida', `${s.fightWinner}% vencedores · ${s.fightHouse}% casa · ${s.fightFund}% bolsa`],
+          ['Grupo / chave', `${s.groupWinner}% vencedores · ${s.groupHouse}% casa`],
+          ['Campeão geral', `${s.championWinner}% vencedores · ${s.championHouse}% casa`]
+        ].map(([title, detail]) => `<div class="rule"><p>${title}<span>${detail}</span></p><div class="rule-value">PO</div></div>`).join('');
+      }
+
+      function renderAll() {
+        syncBracket();
+        renderStats();
+        renderSettings();
+        renderFlowControls();
+        renderBetOptions();
+        renderRoster();
+        renderBracket($('#adminBracket'), true);
+        renderBracket($('#publicBracket'), false);
+        renderPayouts($('#adminPayouts'));
+        renderPayouts($('#publicPayouts'));
+        renderLedger();
+        renderPublicDuel();
+        renderPublicRules();
+        $('#publicPool').textContent = money(championBets().reduce((sum, bet) => sum + num(bet.amount), 0));
+        $('#headerStatus').textContent = remoteAuth.authenticated ? `Sair · ${remoteAuth.username || 'admin'}` : (activeMatch() ? 'Entrar como administrador' : 'Arena pública');
+        $('#viewTabs').classList.toggle('hidden', !isAdminRoute || !remoteAuth.authenticated);
+        $('#adminSessionButton').classList.toggle('hidden', !isAdminRoute);
+        setTab(currentTab);
+      }
+
+      function validatePercentages(settings, type) {
+        const keys = type === 'fight' ? ['fightWinner','fightHouse','fightFund'] : type === 'group' ? ['groupWinner','groupHouse'] : ['championWinner','championHouse'];
+        const values = keys.map((key) => num(settings[key]));
+        return values.every((value) => Number.isFinite(value) && value >= 0 && value <= 100) && Math.abs(values.reduce((sum, value) => sum + value, 0) - 100) < 0.001;
+      }
+
+      function openModal(content) { $('#modalRoot').innerHTML = `<div class="modal-backdrop" data-action="close-modal"><div class="modal" role="dialog" aria-modal="true">${content}</div></div>`; }
+      function closeModal() { $('#modalRoot').innerHTML = ''; }
+
+      function openAuthModal(setup = false) {
+        openModal(`<div class="modal-header"><div><div class="panel-kicker">${setup ? 'Primeiro acesso' : 'Área restrita'}</div><div class="modal-title">${setup ? 'Criar administrador da arena' : 'Login de administrador'}</div></div><button class="close-btn" data-action="close-modal">×</button></div><div class="modal-body"><p class="caption" style="margin:0 0 16px">${setup ? 'Este cadastro acontece uma única vez. A senha é armazenada no servidor com hash; nunca fica no navegador.' : 'Apenas administradores autenticados podem alterar apostas, regras, nomes e resultados. A visão pública continua aberta.'}</p><form id="authForm" data-setup="${setup}"><div class="field-grid"><div class="field"><label>Usuário</label><input class="input" name="username" required autocomplete="username" /></div><div class="field"><label>Senha</label><input class="input" type="password" name="password" required minlength="8" autocomplete="${setup ? 'new-password' : 'current-password'}" /></div></div><div class="modal-actions">${setup ? '' : '<button class="btn btn-quiet" type="button" data-action="close-modal">Cancelar</button>'}<button class="btn btn-primary" type="submit">${setup ? 'Criar acesso' : 'Entrar'}</button></div></form></div>`);
+      }
+
+      function openSettleModal(matchId) {
+        if (!requireAdminClient()) return;
+        const match = getMatch(matchId);
+        if (!match || match.status !== 'open') return;
+        openModal(`<div class="modal-header"><div><div class="panel-kicker">Encerrar combate</div><div class="modal-title">${esc(match.label)} · declarar vencedor</div></div><button class="close-btn" data-action="close-modal">×</button></div><div class="modal-body"><p class="caption" style="margin:0 0 16px">Confirme o nome que venceu na arena. Ao confirmar, o sistema calcula casa, bolsa, odd e pagamentos da luta.</p><form id="settleForm" data-match-id="${match.id}"><div class="field"><label for="winnerChoice">Vencedor</label><select class="select" id="winnerChoice" name="winner" required><option value="${match.a}">${esc(fighterName(match.a))}</option><option value="${match.b}">${esc(fighterName(match.b))}</option></select></div><div class="modal-actions"><button class="btn btn-quiet" type="button" data-action="close-modal">Cancelar</button><button class="btn btn-primary" type="submit">Encerrar luta</button></div></form></div>`);
+      }
+
+      function openSubstitutionModal() {
+        if (!requireAdminClient()) return;
+        const options = state.fighters.map((item) => `<option value="${item.id}">${esc(item.name)}</option>`).join('');
+        openModal(`<div class="modal-header"><div><div class="panel-kicker">Protocolo de emergência</div><div class="modal-title">Substituição Bolg</div></div><button class="close-btn" data-action="close-modal">×</button></div><div class="modal-body"><p class="caption" style="margin:0 0 16px">Substitua o nome ausente pelo <strong class="text-gold">Bolg Ranca Olhos</strong>. A troca mantém a vaga na chave e pode dobrar o peso das apostas dele no cálculo de odds.</p><form id="substitutionForm"><div class="field"><label for="absentFighter">Lutador ausente</label><select class="select" id="absentFighter" name="fighter" required>${options}</select></div><label class="check" style="margin-top:15px"><input type="checkbox" name="double" checked /> Aplicar multiplicador de odds 2× nas apostas do Bolg</label><div class="modal-actions"><button class="btn btn-quiet" type="button" data-action="close-modal">Cancelar</button><button class="btn btn-primary" type="submit">Aplicar substituição</button></div></form></div>`);
+      }
+
+      function openSettlementDetails(matchId) {
+        const match = getMatch(matchId);
+        const settlement = match?.settlement;
+        if (!settlement) return;
+        const payments = settlement.payments?.length ? `<div class="stack-8" style="margin-top:15px">${settlement.payments.map((item) => `<div class="payout-item"><div><div class="payout-who">${esc(item.bettor)}</div><div class="payout-meta">${esc(item.choiceLabel)} · odd ${item.multiplier.toFixed(2)}×</div></div><div class="payout-amount">+${money(item.amount)}</div></div>`).join('')}</div>` : '<div class="empty" style="margin-top:15px">Nenhuma aposta vencedora nesta luta.</div>';
+        openModal(`<div class="modal-header"><div><div class="panel-kicker">Livro-caixa · ${esc(match.label)}</div><div class="modal-title">Acerto confirmado</div></div><button class="close-btn" data-action="close-modal">×</button></div><div class="modal-body"><div class="rule-list"><div class="rule"><p>Arrecadação total<span>${esc(fighterName(match.a))} × ${esc(fighterName(match.b))}</span></p><div class="rule-value">${money(settlement.total)}</div></div><div class="rule"><p>Lucro da casa<span>${state.settings.fightHouse}% da arrecadação</span></p><div class="rule-value">${money(settlement.house)}</div></div><div class="rule"><p>Bolsa dos lutadores<span>${state.settings.fightFund}% da arrecadação</span></p><div class="rule-value">${money(settlement.purse)}</div></div><div class="rule"><p>Total distribuído<span>Pagamento aos vencedores</span></p><div class="rule-value">${money(settlement.distributed)}</div></div></div>${payments}<div class="modal-actions"><button class="btn btn-primary" data-action="close-modal">Fechar livro</button></div></div>`);
+      }
+
+      function settleMatch(matchId, winnerId) {
+        if (!requireAdminClient()) return;
+        const match = getMatch(matchId);
+        if (state.eventStatus === 'settled' || !match || match.status !== 'open') return;
+        const bets = matchBets(matchId);
+        const total = bets.reduce((sum, bet) => sum + num(bet.amount), 0);
+        const winnerPool = total * num(state.settings.fightWinner) / 100;
+        const house = total * num(state.settings.fightHouse) / 100;
+        const purse = total * num(state.settings.fightFund) / 100;
+        const winnerBets = bets.filter((bet) => bet.choiceId === winnerId);
+        const effectiveTotal = winnerBets.reduce((sum, bet) => sum + num(bet.amount) * (state.bolg && bet.choiceId === state.bolg.fighterId ? num(state.bolg.multiplier) : 1), 0);
+        const payments = winnerBets.map((bet) => {
+          const multiplierApplied = state.bolg && bet.choiceId === state.bolg.fighterId ? num(state.bolg.multiplier) : 1;
+          const multiplier = effectiveTotal ? winnerPool / effectiveTotal : 0;
+          return { bettor: bet.bettor, amount: effectiveTotal ? winnerPool * ((num(bet.amount) * multiplierApplied) / effectiveTotal) : 0, choiceLabel: bet.choiceLabel, multiplier };
+        }).filter((item) => item.amount > 0);
+        const distributed = payments.reduce((sum, item) => sum + item.amount, 0);
+        match.winner = winnerId;
+        match.status = 'closed';
+        match.settlement = { total, winnerPool, house, purse, distributed, payments, winnerId, at: Date.now() };
+        state.settlements.unshift({ id: uid('settlement'), matchId, matchLabel: match.label, total, house, purse, distributed, at: Date.now() });
+        payments.forEach((payment) => state.payouts.unshift({ ...payment, matchLabel: match.label, at: Date.now() }));
+        const previousRound = match.roundIndex;
+        const finishedSequence = matchSequence(match);
+        pushActivity(`${fighterName(winnerId)} venceu ${match.label}; ${money(house)} foram para a casa.`, 'success');
+        syncBracket();
+        const prepared = nextReadyMatch();
+        state.flow = { ...state.flow, currentMatchId: null, nextMatchId: prepared?.id || null, lastWinnerId: winnerId, lastRoundIndex: previousRound, lastMatchSequence: finishedSequence, lastEvent: 'victory', eventNonce: num(state.flow?.eventNonce) + 1 };
+        saveState();
+        closeModal();
+        renderAll();
+        showToast(`${match.label} encerrada. Resultado e pagamentos calculados.`, 'success');
+      }
+
+      function settleTournament() {
+        if (!requireAdminClient()) return;
+        const final = state.matches.slice().sort((a, b) => b.roundIndex - a.roundIndex)[0];
+        if (!final?.winner) { showToast('A grande final ainda precisa de um vencedor.', 'error'); return; }
+        if (state.eventStatus === 'settled') { showToast('Este torneio já foi encerrado.', 'error'); return; }
+        if (state.settlements.some((item) => item.matchId === 'tournament')) { showToast('O acerto do torneio já foi processado.', 'error'); return; }
+        const champion = championBets();
+        const championTotal = champion.reduce((sum, bet) => sum + num(bet.amount), 0);
+        const championPool = championTotal * num(state.settings.championWinner) / 100;
+        const championHouse = championTotal * num(state.settings.championHouse) / 100;
+        const championWinners = champion.filter((bet) => bet.choiceId === final.winner);
+        const championWinnerTotal = championWinners.reduce((sum, bet) => sum + num(bet.amount), 0);
+        const championPayments = championWinners.map((bet) => ({ bettor: bet.bettor, amount: championWinnerTotal ? championPool * (num(bet.amount) / championWinnerTotal) : 0, choiceLabel: bet.choiceLabel, multiplier: championWinnerTotal ? championPool / championWinnerTotal : 0 })).filter((item) => item.amount > 0);
+        const group = groupBets();
+        const groupTotal = group.reduce((sum, bet) => sum + num(bet.amount), 0);
+        const groupPool = groupTotal * num(state.settings.groupWinner) / 100;
+        const groupHouse = groupTotal * num(state.settings.groupHouse) / 100;
+        const winningGroup = groupForFighter(final.winner);
+        const groupWinners = group.filter((bet) => bet.choiceId === winningGroup);
+        const groupWinnerTotal = groupWinners.reduce((sum, bet) => sum + num(bet.amount), 0);
+        const groupPayments = groupWinners.map((bet) => ({ bettor: bet.bettor, amount: groupWinnerTotal ? groupPool * (num(bet.amount) / groupWinnerTotal) : 0, choiceLabel: bet.choiceLabel, multiplier: groupWinnerTotal ? groupPool / groupWinnerTotal : 0 })).filter((item) => item.amount > 0);
+        const championDistributed = championPayments.reduce((sum, item) => sum + item.amount, 0);
+        const groupDistributed = groupPayments.reduce((sum, item) => sum + item.amount, 0);
+        state.settlements.unshift({ id: uid('settlement'), matchId: 'tournament', matchLabel: 'Campeão geral', total: championTotal, house: championHouse, purse: 0, distributed: championDistributed, at: Date.now() });
+        state.settlements.unshift({ id: uid('settlement'), matchId: 'group', matchLabel: 'Grupo / chave', total: groupTotal, house: groupHouse, purse: 0, distributed: groupDistributed, at: Date.now() });
+        championPayments.forEach((payment) => state.payouts.unshift({ ...payment, matchLabel: 'Campeão geral', at: Date.now() }));
+        groupPayments.forEach((payment) => state.payouts.unshift({ ...payment, matchLabel: 'Grupo / chave', at: Date.now() }));
+        state.eventStatus = 'settled';
+        pushActivity(`Torneio encerrado: ${fighterName(final.winner)} é o campeão geral.`, 'success');
+        saveState();
+        renderAll();
+        showToast(`Torneio encerrado. ${money(championDistributed + groupDistributed)} distribuídos em bolão e grupos.`, 'success');
+      }
+
+      function exportData(asJson) {
+        const summary = { exportedAt: new Date().toISOString(), event: 'Crônica de Sangue · Skyrim RP', settings: state.settings, fighters: state.fighters, matches: state.matches, bets: state.bets, settlements: state.settlements, payouts: state.payouts };
+        const text = asJson ? JSON.stringify(summary, null, 2) : [
+          'CRÔNICA DE SANGUE · RESUMO DO EVENTO',
+          `Exportado em: ${new Date().toLocaleString('pt-BR')}`,
+          '',
+          `OURO TOTAL NA MESA: ${money(totalBets())}`,
+          `LUCRO DA CASA: ${money(totalHouse())}`,
+          `TOTAL DISTRIBUÍDO: ${money(totalDistributed())}`,
+          `POTE DO BOLÃO: ${money(championBets().reduce((sum, bet) => sum + num(bet.amount), 0))}`,
+          '',
+          'CHAVEAMENTO',
+          ...state.matches.map((match) => `${match.label}: ${fighterName(match.a)} x ${fighterName(match.b)}${match.winner ? ` · vencedor: ${fighterName(match.winner)}` : ''}`),
+          '',
+          'PAGAMENTOS',
+          ...(state.payouts.length ? state.payouts.map((item) => `${item.bettor} recebe ${money(item.amount)} por ${item.choiceLabel} (${item.matchLabel})`) : ['Nenhum pagamento registrado.'])
+        ].join('\n');
+        const blob = new Blob([text], { type: asJson ? 'application/json;charset=utf-8' : 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = asJson ? 'cronica-de-sangue-resumo.json' : 'cronica-de-sangue-resumo.txt';
+        anchor.click();
+        URL.revokeObjectURL(url);
+        showToast(`Arquivo ${asJson ? 'JSON' : 'de texto'} exportado.`, 'success');
+      }
+
+      function resizeBracket(size) {
+        if (!requireAdminClient()) return;
+        if (![8, 16, 32].includes(size) || size === state.bracketSize) return;
+        if (state.bets.length || settledMatchCount()) { showToast('Comece um novo torneio antes de trocar o tamanho da chave.', 'error'); renderRoster(); return; }
+        state = createState(state.settings, state.fighters, size); saveState(); renderAll(); showToast(`Chave de ${size} lutadores criada com sucesso.`, 'success');
+      }
+
+      function shuffleFighters() {
+        if (!requireAdminClient()) return;
+        if (state.bets.length || settledMatchCount() || state.flow?.shuffled) { showToast('O embaralhamento só pode acontecer antes do início da chave.', 'error'); return; }
+        const ids = state.fighters.map((item) => item.id);
+        for (let index = ids.length - 1; index > 0; index -= 1) { const swap = Math.floor(Math.random() * (index + 1)); [ids[index], ids[swap]] = [ids[swap], ids[index]]; }
+        state.matches.filter((match) => match.roundIndex === 0).forEach((match, index) => { match.a = ids[index * 2]; match.b = ids[index * 2 + 1]; });
+        state.flow = { ...state.flow, shuffled: true, currentMatchId: null, nextMatchId: nextReadyMatch()?.id || null, lastEvent: 'shuffle', eventNonce: num(state.flow?.eventNonce) + 1, lastWinnerId: null };
+        pushActivity('Lutadores embaralhados pelo narrador antes da primeira luta.', 'success'); saveState(); renderAll(); showToast('Chave embaralhada. Agora sorteie a primeira luta.', 'success');
+      }
+
+      function selectNextMatch() {
+        if (!requireAdminClient()) return;
+        if (!state.flow?.shuffled) { showToast('Embaralhe os lutadores antes de sortear uma luta.', 'error'); return; }
+        if (activeMatch()) { showToast('A luta atual ainda está no ar.', 'error'); return; }
+        const candidate = (state.flow.nextMatchId && getMatch(state.flow.nextMatchId)?.status === 'open' ? getMatch(state.flow.nextMatchId) : nextReadyMatch());
+        if (!candidate) { showToast('Não há outra luta pronta. Confirme os vencedores anteriores.', 'error'); return; }
+        const previous = state.flow.lastRoundIndex;
+        state.flow = { ...state.flow, currentMatchId: candidate.id, nextMatchId: null, lastRoundIndex: candidate.roundIndex, lastMatchSequence: matchSequence(candidate), lastEvent: previous !== undefined && previous !== candidate.roundIndex ? 'round' : 'selected', eventNonce: num(state.flow.eventNonce) + 1 };
+        pushActivity(`${candidate.label} foi sorteada para a transmissão.`, 'normal'); saveState(); renderAll(); showToast(`${candidate.label} está no ar.`, 'success');
+      }
+
+      function newEvent() {
+        if (!requireAdminClient()) return;
+        if (!window.confirm('Começar um novo torneio? Apostas, resultados e pagamentos atuais serão limpos; regras e nomes serão mantidos.')) return;
+        const fighters = clone(state.fighters).map((item) => ({ ...item, isBolg: false }));
+        state = createState(state.settings, fighters, state.bracketSize);
+        pushActivity('Novo torneio criado; regras e escalação foram mantidas.', 'normal');
+        saveState();
+        renderAll();
+        showToast('Novo torneio pronto para receber apostas.', 'success');
+      }
+
+      document.addEventListener('click', (event) => {
+        const actionTarget = event.target.closest('[data-action]');
+        if (!actionTarget) return;
+        if (actionTarget.classList.contains('modal-backdrop') && event.target !== actionTarget) return;
+        const action = actionTarget.dataset.action;
+        if (action === 'switch-tab') setTab(actionTarget.dataset.tab);
+        if (action === 'login') {
+          if (remoteAuth.authenticated) {
+            fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }).then(async (response) => { if (!response.ok) throw new Error('Falha ao encerrar a sessão.'); window.location.href = '/'; }).catch((error) => showToast(error.message, 'error'));
+          } else openAuthModal(false);
+        }
+        if (action === 'export-text') exportData(false);
+        if (action === 'export-json') exportData(true);
+        if (action === 'settle-tournament') settleTournament();
+        if (action === 'new-event') newEvent();
+        if (action === 'shuffle-fighters') shuffleFighters();
+        if (action === 'select-next-match') selectNextMatch();
+        if (action === 'open-settle') openSettleModal(actionTarget.dataset.matchId);
+        if (action === 'show-settlement') openSettlementDetails(actionTarget.dataset.matchId);
+        if (action === 'open-substitution') openSubstitutionModal();
+        if (action === 'close-modal') closeModal();
+      });
+
+      document.addEventListener('change', (event) => {
+        if (event.target.id === 'betType') renderBetOptions();
+        if (event.target.id === 'bracketSize') resizeBracket(Number(event.target.value));
+      });
+
+      document.addEventListener('submit', async (event) => {
+        if (event.target.id === 'authForm') {
+          event.preventDefault(); const data = Object.fromEntries(new FormData(event.target)); const setup = event.target.dataset.setup === 'true';
+          try {
+            const response = await fetch(setup ? '/api/setup' : '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(data) }); const result = await response.json().catch(() => ({}));
+            if (!response.ok) { showToast(result.error || 'Falha na autenticação.', 'error'); return; }
+            if (setup) { showToast('Administrador criado. Agora faça login.', 'success'); closeModal(); openAuthModal(false); } else { remoteAuth = { authenticated: true, username: data.username, needsSetup: false }; closeModal(); setTab('admin'); renderAll(); showToast('Login realizado com segurança.', 'success'); }
+          } catch { showToast('Não foi possível conectar ao servidor de autenticação.', 'error'); }
+        }
+        if (event.target.id === 'betForm') {
+          event.preventDefault();
+          const data = new FormData(event.target);
+          const type = data.get('type');
+          const amount = num(data.get('amount'));
+          const choiceId = data.get('choice');
+          const active = activeMatch();
+          if (state.eventStatus === 'settled') { showToast('O torneio já foi encerrado; não há novas apostas.', 'error'); return; }
+          if (!String(data.get('bettor') || '').trim() || amount <= 0 || !choiceId) { showToast('Preencha apostador, escolha e um valor maior que zero.', 'error'); return; }
+          if (type === 'fight' && !active) { showToast('Não há luta atual aberta para esta aposta.', 'error'); return; }
+          const groupMatch = type === 'group' ? state.matches.find((match) => `group:${match.id}` === choiceId) : null;
+          let choiceLabel = type === 'group' ? (groupMatch ? `Lado da chave · ${fighterName(groupMatch.a)} / ${fighterName(groupMatch.b)}` : '') : fighterName(choiceId);
+          if (type === 'group' && !groupMatch) { showToast('Esse lado da chave não está mais disponível.', 'error'); return; }
+          if (type === 'fight' && ![active.a, active.b].includes(choiceId)) { showToast('Essa escolha não pertence à luta atual.', 'error'); return; }
+          state.bets.push({ id: uid('bet'), bettor: String(data.get('bettor')).trim(), type, choiceId, choiceLabel, amount, matchId: type === 'fight' ? active.id : null, at: Date.now() });
+          pushActivity(`${String(data.get('bettor')).trim()} registrou ${money(amount)} em ${choiceLabel}.`);
+          saveState({ admin: false });
+          event.target.reset();
+          renderAll();
+          showToast('Aposta registrada e salva neste navegador.', 'success');
+        }
+        if (event.target.id === 'settingsForm') {
+          event.preventDefault();
+          if (!requireAdminClient()) return;
+          const keys = ['fightWinner','fightHouse','fightFund','groupWinner','groupHouse','championWinner','championHouse','entryFee'];
+          const proposed = { ...state.settings };
+          keys.forEach((key) => { proposed[key] = num(event.target.querySelector(`#${key}`).value); });
+          const valid = validatePercentages(proposed, 'fight') && validatePercentages(proposed, 'group') && validatePercentages(proposed, 'champion') && proposed.entryFee >= 0;
+          if (!valid) { showToast('As regras precisam ter valores entre 0 e 100 e cada distribuição deve somar 100%.', 'error'); return; }
+          state.settings = proposed; saveState(); renderAll();
+          showToast('Regras atualizadas para os próximos fechamentos.', 'success');
+        }
+        if (event.target.id === 'settleForm') {
+          event.preventDefault();
+          settleMatch(event.target.dataset.matchId, new FormData(event.target).get('winner'));
+        }
+        if (event.target.id === 'substitutionForm') {
+          event.preventDefault();
+          if (!requireAdminClient()) return;
+          const data = new FormData(event.target);
+          const id = data.get('fighter');
+          const target = fighter(id);
+          if (!target) return;
+          target.name = 'Bolg Ranca Olhos';
+          target.isBolg = true;
+          state.bolg = { fighterId: id, multiplier: data.get('double') ? 2 : 1 };
+          pushActivity(`Substituição Bolg aplicada na vaga de ${id}; multiplicador ${state.bolg.multiplier}×.`);
+          saveState(); closeModal(); renderAll(); showToast(`Bolg Ranca Olhos entrou na vaga com odd ${state.bolg.multiplier}×.`, 'success');
+        }
+      });
+
+      document.addEventListener('click', (event) => {
+        if (event.target.dataset.action === 'save-roster') {
+          if (!requireAdminClient()) return;
+          $$('[data-fighter-name]').forEach((input) => { const target = fighter(input.dataset.fighterName); if (target && input.value.trim()) target.name = input.value.trim(); });
+          saveState(); renderAll(); showToast('Escalação salva.', 'success');
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && $('#modalRoot').firstElementChild) closeModal();
+      });
+
+      renderAll();
+      syncRemoteState();
+      setInterval(() => { if (currentTab === 'public') syncRemoteState(); }, 5000);
+    })();
+  </script>
+</body>
+</html>

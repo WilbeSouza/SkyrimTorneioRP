@@ -1,0 +1,12 @@
+{
+  "name": "cronica-de-sangue-arena",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Painel de torneio e transmissão para Skyrim RP",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
